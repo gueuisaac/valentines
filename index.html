@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>💕</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💕</text></svg>">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        html,body{width:100%;height:100%;overflow:hidden;background:#0f0e2a;touch-action:none}
+        canvas{display:block}
+    </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, P, GW, GH;
+
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    P = Math.max(3, Math.floor(W / 110));
+    GW = Math.floor(W / P);
+    GH = Math.floor(H / P);
+    initStars();
+}
+window.addEventListener('resize', resize);
+
+// --- Drawing helpers ---
+function px(x, y, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect((x | 0) * P, (y | 0) * P, P, P);
+}
+function rect(x, y, w, h, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect((x | 0) * P, (y | 0) * P, w * P, h * P);
+}
+
+// --- Stars ---
+let stars = [];
+function initStars() {
+    stars = [];
+    for (let i = 0; i < 50; i++) {
+        stars.push({
+            x: Math.random() * GW | 0,
+            y: Math.random() * (GH * 0.35) | 0,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.8 + Math.random() * 1.5,
+        });
+    }
+}
+
+function drawSky(t) {
+    rect(0, 0, GW, GH, '#0f0e2a');
+    for (const s of stars) {
+        const b = 0.3 + 0.7 * ((Math.sin(s.phase + t * 0.001 * s.speed) + 1) / 2);
+        ctx.globalAlpha = b;
+        px(s.x, s.y, '#ffffcc');
+        ctx.globalAlpha = 1;
+    }
+}
+
+// --- Pixel font for VESUVIO sign ---
+const GLYPHS = {
+    V:[[1,0,1],[1,0,1],[1,0,1],[1,0,1],[0,1,0]],
+    E:[[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,1,1]],
+    S:[[0,1,1],[1,0,0],[0,1,0],[0,0,1],[1,1,0]],
+    U:[[1,0,1],[1,0,1],[1,0,1],[1,0,1],[0,1,0]],
+    I:[[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
+    O:[[0,1,0],[1,0,1],[1,0,1],[1,0,1],[0,1,0]],
+};
+
+function drawGlyph(ch, ox, oy, col) {
+    const g = GLYPHS[ch];
+    if (!g) return;
+    for (let r = 0; r < g.length; r++)
+        for (let c = 0; c < g[r].length; c++)
+            if (g[r][c]) px(ox + c, oy + r, col);
+}
+
+function drawSign(text, ox, oy, col) {
+    for (let i = 0; i < text.length; i++)
+        drawGlyph(text[i], ox + i * 4, oy, col);
+}
+
+// --- Building ---
+function drawBuilding(t) {
+    const bw = Math.min(56, GW * 0.55 | 0);
+    const bh = GH * 0.35 | 0;
+    const groundY = GH * 0.56 | 0;
+    const bx = (GW / 2 - bw / 2) | 0;
+    const by = groundY - bh;
+
+    // Main facade
+    rect(bx, by, bw, bh, '#1a6b1a');
+    rect(bx + 1, by + 1, bw - 2, bh - 1, '#237a23');
+
+    // Roof trim
+    rect(bx - 1, by - 1, bw + 2, 2, '#5c3317');
+    rect(bx - 2, by - 2, bw + 4, 1, '#8b5e3c');
+
+    // VESUVIO sign
+    const signW = 7 * 4 - 1;
+    const signX = (GW / 2 - signW / 2) | 0;
+    const signY = by + 4;
+    rect(signX - 2, signY - 1, signW + 4, 7, '#1a0808');
+
+    // Neon glow (flickers)
+    const flicker = 0.2 + 0.15 * Math.sin(t * 0.008) * Math.sin(t * 0.003);
+    ctx.globalAlpha = Math.max(0.1, flicker);
+    rect(signX - 3, signY - 2, signW + 6, 9, '#ff3355');
+    ctx.globalAlpha = 1;
+    drawSign('VESUVIO', signX, signY, '#ff3355');
+
+    // Floor divider
+    const midFloor = by + Math.floor(bh * 0.45);
+    rect(bx + 1, midFloor, bw - 2, 1, '#185a18');
+
+    // Upper windows
+    const winW = 7, winH = 8, winM = 5;
+    drawWindow(bx + winM, by + 14, winW, winH);
+    drawWindow(bx + bw - winM - winW, by + 14, winW, winH);
+
+    // Lower windows
+    drawWindow(bx + winM, midFloor + 4, winW, winH);
+    drawWindow(bx + bw - winM - winW, midFloor + 4, winW, winH);
+
+    // Door
+    const dw = 10, dh = 14;
+    const dx = (GW / 2 - dw / 2) | 0;
+    const dy = groundY - dh;
+    rect(dx, dy, dw, dh, '#3a1a0a');
+    rect(dx + 1, dy + 1, dw - 2, dh - 1, '#5a3a1a');
+    rect(dx + 1, dy, dw - 2, 1, '#5c3317');
+    rect(dx + 2, dy + 2, dw - 4, 4, '#d4a44a');
+    px(dx + dw - 3, dy + 8, '#c0a060');
+
+    // Ground / sidewalk
+    rect(0, groundY, GW, 1, '#666');
+    rect(0, groundY + 1, GW, 2, '#555');
+    rect(0, groundY + 3, GW, GH - groundY - 3, '#444');
+
+    return { groundY };
+}
+
+function drawWindow(x, y, w, h) {
+    rect(x, y, w, h, '#4a2a0a');
+    rect(x + 1, y + 1, w - 2, h - 2, '#f5d76e');
+    rect(x + (w / 2 | 0), y + 1, 1, h - 2, '#4a2a0a');
+    rect(x + 1, y + (h / 2 | 0), w - 2, 1, '#4a2a0a');
+    rect(x + 1, y + 1, (w / 2 | 0) - 1, (h / 2 | 0) - 1, '#fff8dc');
+}
+
+// --- Bear (walking pose) ---
+function drawBear(cx, cy, fur, belly, bounce) {
+    const y = cy + (bounce | 0);
+
+    // Ears
+    rect(cx - 6, y - 16, 3, 3, fur);
+    rect(cx + 4, y - 16, 3, 3, fur);
+    px(cx - 5, y - 15, belly);
+    px(cx + 5, y - 15, belly);
+
+    // Head
+    rect(cx - 5, y - 14, 11, 10, fur);
+
+    // Eyes
+    px(cx - 3, y - 10, '#111');
+    px(cx + 3, y - 10, '#111');
+
+    // Nose
+    rect(cx - 1, y - 8, 3, 2, '#333');
+
+    // Blush
+    px(cx - 4, y - 8, '#ff8888');
+    px(cx + 4, y - 8, '#ff8888');
+
+    // Smile
+    px(cx - 1, y - 6, '#222');
+    px(cx + 1, y - 6, '#222');
+
+    // Body
+    rect(cx - 5, y - 3, 11, 11, fur);
+    rect(cx - 3, y - 1, 7, 7, belly);
+
+    // Arms at sides
+    rect(cx - 7, y - 2, 2, 7, fur);
+    rect(cx + 6, y - 2, 2, 7, fur);
+
+    // Legs
+    rect(cx - 4, y + 8, 3, 3, fur);
+    rect(cx + 2, y + 8, 3, 3, fur);
+}
+
+// --- Bear (hugging pose) ---
+function drawBearHug(cx, cy, fur, belly) {
+    const y = cy;
+
+    // Ears
+    rect(cx - 6, y - 16, 3, 3, fur);
+    rect(cx + 4, y - 16, 3, 3, fur);
+    px(cx - 5, y - 15, belly);
+    px(cx + 5, y - 15, belly);
+
+    // Head
+    rect(cx - 5, y - 14, 11, 10, fur);
+
+    // Eyes closed (happy squint)
+    rect(cx - 4, y - 10, 3, 1, '#333');
+    rect(cx + 2, y - 10, 3, 1, '#333');
+
+    // Nose
+    rect(cx - 1, y - 8, 3, 2, '#333');
+
+    // Big blush
+    rect(cx - 5, y - 8, 2, 1, '#ff8888');
+    rect(cx + 4, y - 8, 2, 1, '#ff8888');
+
+    // Big smile
+    px(cx - 2, y - 6, '#222');
+    px(cx - 1, y - 6, '#222');
+    px(cx + 1, y - 6, '#222');
+    px(cx + 2, y - 6, '#222');
+
+    // Body
+    rect(cx - 5, y - 3, 11, 11, fur);
+    rect(cx - 3, y - 1, 7, 7, belly);
+
+    // Legs
+    rect(cx - 4, y + 8, 3, 3, fur);
+    rect(cx + 2, y + 8, 3, 3, fur);
+}
+
+function drawHugArms(lx, rx, cy, lFur, rFur) {
+    // Left bear's right arm wraps around right bear
+    rect(lx + 6, cy - 2, 2, 7, lFur);
+    rect(rx + 3, cy - 1, 3, 5, lFur);
+    // Right bear's left arm wraps around left bear
+    rect(rx - 7, cy - 2, 2, 7, rFur);
+    rect(lx - 5, cy - 1, 3, 5, rFur);
+}
+
+// --- Hearts ---
+let hearts = [];
+function spawnHeart(x, y) {
+    hearts.push({
+        x: x + (Math.random() - 0.5) * 14,
+        y,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: -0.3 - Math.random() * 0.4,
+        life: 1,
+        color: ['#ff4081', '#ff6b9d', '#e91e63'][Math.random() * 3 | 0],
+        big: Math.random() > 0.6,
+    });
+}
+
+function updateAndDrawHearts() {
+    for (let i = hearts.length - 1; i >= 0; i--) {
+        const h = hearts[i];
+        h.x += h.vx;
+        h.y += h.vy;
+        h.vx += (Math.random() - 0.5) * 0.02;
+        h.life -= 0.004;
+        if (h.life <= 0) { hearts.splice(i, 1); continue; }
+        ctx.globalAlpha = h.life;
+        const x = h.x | 0, y = h.y | 0;
+        if (h.big) {
+            px(x-1,y,h.color); px(x+1,y,h.color);
+            px(x-2,y+1,h.color); px(x-1,y+1,h.color); px(x,y+1,h.color); px(x+1,y+1,h.color); px(x+2,y+1,h.color);
+            px(x-1,y+2,h.color); px(x,y+2,h.color); px(x+1,y+2,h.color);
+            px(x,y+3,h.color);
+        } else {
+            px(x-1,y,h.color); px(x+1,y,h.color);
+            px(x-1,y+1,h.color); px(x,y+1,h.color); px(x+1,y+1,h.color);
+            px(x,y+2,h.color);
+        }
+        ctx.globalAlpha = 1;
+    }
+}
+
+// --- Message ---
+function drawMessage(t, groundY) {
+    const start = 6000;
+    if (t < start) return;
+    const elapsed = t - start;
+    const full = 'Bella,\nwill you be\nmy Valentine?';
+    const show = Math.min(full.length, elapsed / 80 | 0);
+    const visible = full.substring(0, show);
+    const fontSize = Math.max(14, P * 3.5) | 0;
+    ctx.font = 'bold ' + fontSize + 'px monospace';
+    ctx.textAlign = 'center';
+    const lines = visible.split('\n');
+    const lh = fontSize * 1.5;
+    const baseY = (groundY + 12) * P;
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillStyle = '#00000066';
+        ctx.fillText(lines[i], W / 2 + 1, baseY + i * lh + 1);
+        ctx.fillStyle = i === 0 ? '#ffb6c1' : '#ffffff';
+        ctx.fillText(lines[i], W / 2, baseY + i * lh);
+    }
+    // Blinking cursor while typing
+    if (show < full.length && ((t / 500 | 0) % 2 === 0)) {
+        const lastLine = lines[lines.length - 1];
+        const tw = ctx.measureText(lastLine).width;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(W / 2 + tw / 2 + 2, baseY + (lines.length - 1) * lh - fontSize + 4, P, fontSize);
+    }
+    // Heart emoji after done typing
+    if (show >= full.length) {
+        const hE = elapsed - full.length * 80;
+        if (hE > 400) {
+            const pulse = 1 + 0.06 * Math.sin(t * 0.004);
+            const hs = (Math.max(18, P * 4) * pulse) | 0;
+            ctx.font = hs + 'px serif';
+            ctx.fillText('\u{1F495}', W / 2, baseY + lines.length * lh + 8);
+        }
+    }
+}
+
+// --- Tap to spawn hearts ---
+canvas.addEventListener('click', function(e) {
+    for (let i = 0; i < 6; i++) spawnHeart(e.clientX / P, e.clientY / P);
+});
+canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    for (let j = 0; j < e.changedTouches.length; j++) {
+        const t = e.changedTouches[j];
+        for (let i = 0; i < 6; i++) spawnHeart(t.clientX / P, t.clientY / P);
+    }
+}, { passive: false });
+
+// --- Easing ---
+function easeInOut(x) {
+    return x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) * (-2 * x + 2) / 2;
+}
+
+// --- Main loop ---
+resize();
+let t0 = null;
+
+const BEAR1_FUR = '#c48030';
+const BEAR1_BELLY = '#e8c088';
+const BEAR2_FUR = '#8b5c2a';
+const BEAR2_BELLY = '#d4a66a';
+
+function frame(ts) {
+    if (!t0) t0 = ts;
+    const t = ts - t0;
+
+    drawSky(t);
+
+    // Fade in building
+    ctx.globalAlpha = Math.min(1, t / 1200);
+    const bld = drawBuilding(t);
+    ctx.globalAlpha = 1;
+
+    const gY = bld.groundY;
+    const bearY = gY - 1;
+    const cx = GW / 2 | 0;
+
+    const walkStart = 1500;
+    const walkEnd = 4000;
+    const hugStart = 4500;
+    const hugDone = 5000;
+
+    if (t >= walkStart) {
+        const wp = Math.min(1, (t - walkStart) / (walkEnd - walkStart));
+        const ease = easeInOut(wp);
+        const b1Target = cx - 9;
+        const b2Target = cx + 9;
+        const b1Start = -15;
+        const b2Start = GW + 15;
+
+        if (t < hugStart) {
+            // Walking in
+            const b1x = b1Start + (b1Target - b1Start) * ease;
+            const b2x = b2Start + (b2Target - b2Start) * ease;
+            const bounce1 = wp < 1 ? Math.sin(t * 0.012) * 1.5 : 0;
+            const bounce2 = wp < 1 ? Math.sin(t * 0.012 + Math.PI) * 1.5 : 0;
+            drawBear(b1x | 0, bearY, BEAR1_FUR, BEAR1_BELLY, bounce1);
+            drawBear(b2x | 0, bearY, BEAR2_FUR, BEAR2_BELLY, bounce2);
+        } else if (t < hugDone) {
+            // Moving together
+            const hp = (t - hugStart) / (hugDone - hugStart);
+            const he = easeInOut(hp);
+            const b1x = b1Target + (cx - 6 - b1Target) * he;
+            const b2x = b2Target + (cx + 6 - b2Target) * he;
+            drawBear(b1x | 0, bearY, BEAR1_FUR, BEAR1_BELLY, 0);
+            drawBear(b2x | 0, bearY, BEAR2_FUR, BEAR2_BELLY, 0);
+        } else {
+            // Hugging!
+            const lb = cx - 6;
+            const rb = cx + 6;
+            drawBearHug(lb, bearY, BEAR1_FUR, BEAR1_BELLY);
+            drawBearHug(rb, bearY, BEAR2_FUR, BEAR2_BELLY);
+            drawHugArms(lb, rb, bearY, BEAR1_FUR, BEAR2_FUR);
+
+            // Spawn hearts
+            if (Math.random() < 0.06) spawnHeart(cx, bearY - 20);
+        }
+    }
+
+    updateAndDrawHearts();
+    drawMessage(t, gY);
+
+    requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
